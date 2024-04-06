@@ -44,7 +44,12 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint32_t left_toggles = 0;
+uint32_t right_toggles = 0;
 uint32_t left_last_press_tick = 0;
+uint32_t right_last_press_tick = 0;
+uint16_t probar = 0;
+uint32_t stop_toggles = 0;
+uint32_t stop_last_press_tick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,17 +64,44 @@ void heartbeat(void);
 /* USER CODE BEGIN 0 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	if (GPIO_Pin == S1_Pin) {
+	if (GPIO_Pin == S1_Pin && HAL_GetTick() > (left_last_press_tick + 200)) {
+		right_toggles = 0;
+		stop_toggles = 0;
+		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
+		HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
 		HAL_UART_Transmit(&huart2, "S1\r\n", 4, 10);
-		if (HAL_GetTick() < (left_last_press_tick + 300)) { // if last press was in the last 300ms
+		if (HAL_GetTick() < (left_last_press_tick + 400)) {
+			// If the most recent touch occurred within the last 300 milliseconds.
 			left_toggles = 0xFFFFFF; // a long time toggling (infinite)
 		} else {
 			left_toggles = 6;
 		}
 		left_last_press_tick = HAL_GetTick();
-	} else if (GPIO_Pin == S2_Pin) {
+
+
+	} else if (GPIO_Pin == S2_Pin && HAL_GetTick() > (right_last_press_tick + 200)) {
 		left_toggles = 0;
-	}
+		stop_toggles = 0;
+		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
+		HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+		HAL_UART_Transmit(&huart2, "S2\r\n", 4, 10);
+		if (HAL_GetTick() < (right_last_press_tick + 400)) {
+			// If the most recent press occurred within the past 300 milliseconds
+			right_toggles = 0xFFFFFF; // a long time toggling (infinite)
+		} else {
+			right_toggles = 6;
+				}
+		right_last_press_tick = HAL_GetTick();
+
+
+	} else if (GPIO_Pin == S3_Pin) {
+		right_toggles = 0;
+		left_toggles = 0;
+		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
+		HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+		HAL_UART_Transmit(&huart2, "S3\r\n", 4, 10);
+		stop_toggles = 0xFFFFFF; // a long time toggling (infinite)
+			}
 }
 
 void heartbeat(void)
@@ -89,12 +121,44 @@ void turn_signal_left(void)
 			turn_toggle_tick = HAL_GetTick() + 500;
 			HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
 			left_toggles--;
-		} else {
+		} else if(stop_toggles <= 0) {
 			HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
-		}
-
+	}
 	}
 }
+
+void turn_signal_right(void)
+{
+	static uint32_t turn_toggle_tick = 0;
+	if (turn_toggle_tick < HAL_GetTick()){
+		if (right_toggles > 0) {
+			turn_toggle_tick = HAL_GetTick() + 500;
+			HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin);
+			right_toggles--;
+		} else if(stop_toggles <= 0){
+			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+	}
+	}
+}
+
+void stationary(void)
+{
+	static uint32_t turn_toggle_tick = 0;
+	if (turn_toggle_tick < HAL_GetTick()){
+		if (stop_toggles > 0) {
+			turn_toggle_tick = HAL_GetTick() + 500;
+			HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
+			HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin);
+			stop_toggles--;
+		}  else if (right_toggles <= 0 && left_toggles <= 0){
+			HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
+			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+		}
+	}
+}
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -136,6 +200,8 @@ int main(void)
   {
 	  heartbeat();
 	  turn_signal_left();
+	  turn_signal_right();
+	  stationary();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -152,27 +218,21 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
+  /** Set the output voltage of the primary internal regulator.
   */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
     Error_Handler();
   }
 
-  /** Initializes the RCC Oscillators according to the specified parameters
+  /** Initialize the RCC oscillators based on the provided parameters.
   * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
-  RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 40;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
-  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -182,12 +242,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }
@@ -244,10 +304,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, D1_Pin|D3_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, D1_Pin|D3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : S1_Pin S2_Pin */
   GPIO_InitStruct.Pin = S1_Pin|S2_Pin;
@@ -262,6 +322,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : S3_Pin */
+  GPIO_InitStruct.Pin = S3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(S3_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : D4_Pin */
   GPIO_InitStruct.Pin = D4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -270,6 +336,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(D4_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
