@@ -1,5 +1,5 @@
 
-Turn_Signal_and_Hazard_Lights.elf:     file format elf32-littlearm
+Tesla_Lightss.elf:     file format elf32-littlearm
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
@@ -41,11 +41,11 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  18 .debug_line   0000a890  00000000  00000000  000517e4  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_str    000e3b79  00000000  00000000  0005c074  2**0
+ 19 .debug_str    000e3b8a  00000000  00000000  0005c074  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .debug_frame  00002328  00000000  00000000  0013fbf0  2**2
+ 20 .debug_frame  00002328  00000000  00000000  0013fc00  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 21 .debug_line_str 0000005e  00000000  00000000  00141f18  2**0
+ 21 .debug_line_str 0000006f  00000000  00000000  00141f28  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -416,7 +416,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  800052a:	f503 73c8 	add.w	r3, r3, #400	; 0x190
  800052e:	429a      	cmp	r2, r3
  8000530:	d204      	bcs.n	800053c <HAL_GPIO_EXTI_Callback+0x78>
-			// if the previous press occurred within the last 300 milliseconds.
+			// if last press was in the last 300ms
 			left_toggles = 0xFFFFFF; // a long time toggling (infinite)
  8000532:	4b3f      	ldr	r3, [pc, #252]	; (8000630 <HAL_GPIO_EXTI_Callback+0x16c>)
  8000534:	f06f 427f 	mvn.w	r2, #4278190080	; 0xff000000
@@ -897,8 +897,8 @@ void SystemClock_Config(void)
  800084a:	f000 f8e3 	bl	8000a14 <Error_Handler>
   }
 
-  /** Initiates the RCC oscillators based on the provided parameters.
-  * Within the RCC_OscInitTypeDef structure.
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
  800084e:	2310      	movs	r3, #16
@@ -927,7 +927,7 @@ void SystemClock_Config(void)
  8000872:	f000 f8cf 	bl	8000a14 <Error_Handler>
   }
 
-  /** Configures the clocks for the CPU, AHB, and APB buses.
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
  8000876:	230f      	movs	r3, #15

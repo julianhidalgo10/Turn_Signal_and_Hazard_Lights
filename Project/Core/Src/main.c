@@ -50,6 +50,8 @@ uint32_t right_last_press_tick = 0;
 uint16_t probar = 0;
 uint32_t stop_toggles = 0;
 uint32_t stop_last_press_tick = 0;
+uint32_t state = 0;
+uint32_t state2 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,34 +67,38 @@ void heartbeat(void);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == S1_Pin && HAL_GetTick() > (left_last_press_tick + 200)) {
+		if(right_toggles > 0){
+			state = 1;
+		}
 		right_toggles = 0;
 		stop_toggles = 0;
 		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
 		HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
 		HAL_UART_Transmit(&huart2, "S1\r\n", 4, 10);
 		if (HAL_GetTick() < (left_last_press_tick + 400)) {
-			// If the most recent touch occurred within the last 300 milliseconds.
+			// if the previous press occurred within the last 300 milliseconds.
 			left_toggles = 0xFFFFFF; // a long time toggling (infinite)
 		} else {
 			left_toggles = 6;
 		}
 		left_last_press_tick = HAL_GetTick();
 
-
 	} else if (GPIO_Pin == S2_Pin && HAL_GetTick() > (right_last_press_tick + 200)) {
+		if(left_toggles > 0){
+			state2 = 1;
+		}
 		left_toggles = 0;
 		stop_toggles = 0;
 		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
 		HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
 		HAL_UART_Transmit(&huart2, "S2\r\n", 4, 10);
 		if (HAL_GetTick() < (right_last_press_tick + 400)) {
-			// If the most recent press occurred within the past 300 milliseconds
+			// if last press was in the last 300ms
 			right_toggles = 0xFFFFFF; // a long time toggling (infinite)
 		} else {
 			right_toggles = 6;
 				}
 		right_last_press_tick = HAL_GetTick();
-
 
 	} else if (GPIO_Pin == S3_Pin) {
 		right_toggles = 0;
@@ -117,12 +123,14 @@ void turn_signal_left(void)
 {
 	static uint32_t turn_toggle_tick = 0;
 	if (turn_toggle_tick < HAL_GetTick()) {
-		if (left_toggles > 0) {
+		if (left_toggles > 0 && state != 1) {
 			turn_toggle_tick = HAL_GetTick() + 500;
 			HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
 			left_toggles--;
 		} else if(stop_toggles <= 0) {
 			HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
+			left_toggles = 0;
+			state = 0;
 	}
 	}
 }
@@ -131,12 +139,14 @@ void turn_signal_right(void)
 {
 	static uint32_t turn_toggle_tick = 0;
 	if (turn_toggle_tick < HAL_GetTick()){
-		if (right_toggles > 0) {
+		if (right_toggles > 0 && state2 != 1) {
 			turn_toggle_tick = HAL_GetTick() + 500;
 			HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin);
 			right_toggles--;
 		} else if(stop_toggles <= 0){
 			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+			right_toggles = 0;
+			state2 = 0;
 	}
 	}
 }
@@ -218,15 +228,15 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Set the output voltage of the primary internal regulator.
+  /** Configure the main internal regulator output voltage
   */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
     Error_Handler();
   }
 
-  /** Initialize the RCC oscillators based on the provided parameters.
-  * in the RCC_OscInitTypeDef structure.
+  /** Initiates the RCC oscillators based on the provided parameters.
+  * Within the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
@@ -238,7 +248,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 
-  /** Initializes the CPU, AHB and APB buses clocks
+  /** Configures the clocks for the CPU, AHB, and APB buses.
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
