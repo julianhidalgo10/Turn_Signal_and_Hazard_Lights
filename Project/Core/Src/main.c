@@ -71,6 +71,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if(right_toggles > 0){
 			state = 1;
 		}
+		left_toggles = 0;
 		right_toggles = 0;
 		stop_toggles = 0;
 		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
@@ -88,6 +89,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if(left_toggles > 0){
 			state2 = 1;
 		}
+		right_toggles = 0;
 		left_toggles = 0;
 		stop_toggles = 0;
 		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
@@ -105,6 +107,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if(stop_toggles > 0){
 			state3 = 1;
 		}
+		stop_toggles = 0;
 		right_toggles = 0;
 		left_toggles = 0;
 		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);
@@ -254,7 +257,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 
-  /** Initializes the CPU, AHB and APB buses clocks
+  /** Configures the clocks for the CPU, AHB, and APB buses.
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
